@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.compose.components.resources)
 
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
@@ -23,6 +24,13 @@ compose.desktop {
             targetFormats(TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PictureSorter"
             packageVersion = "1.0.0"
+
+            windows {
+                iconFile.set(project.file("icons/icon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("icons/icon.png"))
+            }
         }
     }
 }

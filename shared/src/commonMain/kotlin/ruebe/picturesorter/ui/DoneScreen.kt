@@ -30,7 +30,7 @@ fun MovingScreen() {
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = ProgressBlue)
         Text("Moving pictures …")
     }
 }

@@ -38,7 +38,7 @@ fun SummaryScreen(
         }
 
         if (busy) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = ProgressBlue)
         } else {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

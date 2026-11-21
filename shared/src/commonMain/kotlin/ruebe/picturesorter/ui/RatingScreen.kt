@@ -50,6 +50,7 @@ fun RatingScreen(
     images: Map<String, ImageState>,
     onRate: (Rating) -> Unit,
     onUndo: () -> Unit,
+    onHome: () -> Unit,
 ) {
     val photo = session.current ?: return
     val focusRequester = remember { FocusRequester() }
@@ -101,10 +102,12 @@ fun RatingScreen(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
+            HomeButton(onClick = onHome)
         }
         LinearProgressIndicator(
             progress = { session.currentIndex.toFloat() / session.queue.size },
             modifier = Modifier.fillMaxWidth(),
+            color = ProgressBlue,
         )
 
         // Picture styled like a printed photo: white border and soft shadow, sized to its aspect ratio
@@ -127,7 +130,7 @@ fun RatingScreen(
                         .padding(8.dp),
                 )
                 ImageState.Failed -> Text("Picture cannot be displayed")
-                ImageState.Loading, null -> CircularProgressIndicator()
+                ImageState.Loading, null -> CircularProgressIndicator(color = ProgressBlue)
             }
         }
 

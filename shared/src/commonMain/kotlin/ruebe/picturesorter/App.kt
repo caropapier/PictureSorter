@@ -2,8 +2,12 @@ package ruebe.picturesorter
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import ruebe.picturesorter.ui.HomeButton
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
+import ruebe.picturesorter.ui.PictureSorterTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,7 +27,7 @@ import ruebe.picturesorter.ui.SummaryScreen
 @Composable
 fun App(platform: PhotoPlatform) {
     val vm = viewModel { SorterViewModel(platform) }
-    MaterialTheme {
+    PictureSorterTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
                 when (vm.screen) {
@@ -38,6 +42,7 @@ fun App(platform: PhotoPlatform) {
                             images = vm.images,
                             onRate = vm::rate,
                             onUndo = vm::undo,
+                            onHome = vm::requestHome,
                         )
                     }
                     Screen.SUMMARY -> vm.session?.let { session ->
@@ -67,6 +72,24 @@ fun App(platform: PhotoPlatform) {
                         }
                     }
                 }
+
+                // The rating screen places the icon in its own header row
+                if (vm.screen == Screen.SUMMARY || vm.screen == Screen.DONE) {
+                    HomeButton(
+                        onClick = vm::requestHome,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+                    )
+                }
+            }
+
+            if (vm.confirmAbort) {
+                AlertDialog(
+                    onDismissRequest = vm::cancelHome,
+                    title = { Text("Cancel sorting?") },
+                    text = { Text("All ratings will be lost. No pictures have been moved.") },
+                    confirmButton = { TextButton(onClick = vm::confirmHome) { Text("Cancel sorting") } },
+                    dismissButton = { TextButton(onClick = vm::cancelHome) { Text("Keep sorting") } },
+                )
             }
 
             vm.pendingMove?.let { move ->

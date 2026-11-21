@@ -122,8 +122,33 @@ class SorterViewModel(private val platform: PhotoPlatform) : ViewModel() {
         }
     }
 
+    /** True while the "cancel sorting?" confirmation is shown. */
+    var confirmAbort by mutableStateOf(false)
+        private set
+
+    /** Home icon clicked: return to the start screen, asking first if ratings would be lost. */
+    fun requestHome() {
+        // Moving cannot be interrupted safely; while busy a folder dialog is still open
+        if (screen == Screen.START || screen == Screen.MOVING || busy) return
+        val current = session
+        val ratingsWouldBeLost = (screen == Screen.RATING || screen == Screen.SUMMARY) &&
+            current != null && (current.canUndo || current.round > 1)
+        if (ratingsWouldBeLost) confirmAbort = true else restart()
+    }
+
+    fun confirmHome() {
+        confirmAbort = false
+        restart()
+    }
+
+    fun cancelHome() {
+        confirmAbort = false
+    }
+
     fun restart() {
         clearImages()
+        confirmAbort = false
+        pendingMove = null
         session = null
         moveResult = null
         movedMode = null

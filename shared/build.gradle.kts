@@ -14,6 +14,7 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
@@ -28,4 +29,10 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
         }
     }
+}
+
+compose.resources {
+    // desktopApp uses the app icon for the window, so Res must be visible outside this module
+    publicResClass = true
+    packageOfResClass = "ruebe.picturesorter.resources"
 }
