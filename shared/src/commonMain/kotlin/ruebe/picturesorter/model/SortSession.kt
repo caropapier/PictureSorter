@@ -68,4 +68,31 @@ data class SortSession(
         ratings = emptyMap(),
         previousRatings = ratings,
     )
+
+    companion object {
+        /**
+         * Rebuilds a session from saved progress and the pictures currently in the folder ([photos]).
+         * Saved pictures that no longer exist are skipped. In round 1, pictures added to the folder
+         * since saving are appended to the end of the queue.
+         */
+        fun restore(saved: SavedProgress, photos: List<Photo>): RestoredSession {
+            val byName = photos.associateBy { it.name }
+            val present = saved.entries.distinctBy { it.name }.filter { it.name in byName }
+            val queue = present.map { byName.getValue(it.name) }.toMutableList()
+            if (saved.round == 1) {
+                val known = saved.entries.mapTo(HashSet()) { it.name }
+                queue += photos.filter { it.name !in known }
+            }
+            // Pictures are rated strictly in order, so only the leading rated entries count
+            val ratings = present.takeWhile { it.rating != null }
+                .associate { byName.getValue(it.name).id to it.rating!! }
+            val previousRatings = present.mapNotNull { entry ->
+                entry.previousRating?.let { byName.getValue(entry.name).id to it }
+            }.toMap()
+            return RestoredSession(
+                session = SortSession(saved.round, queue, ratings, previousRatings),
+                missingCount = saved.entries.size - present.size,
+            )
+        }
+    }
 }

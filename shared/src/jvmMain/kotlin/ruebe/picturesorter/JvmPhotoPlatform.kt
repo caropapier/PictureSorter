@@ -14,23 +14,33 @@ import org.jetbrains.skia.Surface
 import ruebe.picturesorter.model.Photo
 import java.awt.Component
 import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import javax.swing.JFileChooser
 import javax.swing.UIManager
 import kotlin.io.path.exists
 import kotlin.io.path.extension
+import kotlin.io.path.getLastModifiedTime
+import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.readBytes
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class JvmPhotoPlatform(private val parent: Component? = null) : PhotoPlatform {
+class JvmPhotoPlatform(
+    private val parent: Component? = null,
+    private val progressDir: Path = defaultProgressDir(),
+) : PhotoPlatform {
 
     override suspend fun pickFolder(title: String, suggestion: String?): String? = withContext(Dispatchers.Swing) {
         ensureSystemLookAndFeel()
@@ -93,8 +103,64 @@ class JvmPhotoPlatform(private val parent: Component? = null) : PhotoPlatform {
         return runCatching { pa.exists() && pb.exists() && Files.isSameFile(pa, pb) }.getOrDefault(false)
     }
 
+    override suspend fun readProgressFiles(): List<String> = withContext(Dispatchers.IO) {
+        if (!progressDir.isDirectory()) return@withContext emptyList()
+        Files.list(progressDir).use { stream -> stream.toList() }
+            .filter { it.isRegularFile() && it.extension == PROGRESS_EXTENSION }
+            .sortedByDescending { it.getLastModifiedTime() }
+            .mapNotNull { runCatching { it.readText() }.getOrNull() }
+    }
+
+    override suspend fun writeProgressFile(folder: String, content: String) = withContext(Dispatchers.IO) {
+        Files.createDirectories(progressDir)
+        val file = progressFile(folder)
+        // Write to a temporary file first, so a crash never leaves a half-written progress file
+        val temp = Files.createTempFile(progressDir, file.nameWithoutExtension, ".tmp")
+        try {
+            temp.writeText(content)
+            try {
+                Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            Files.deleteIfExists(temp)
+        }
+        Unit
+    }
+
+    override suspend fun deleteProgressFile(folder: String) = withContext(Dispatchers.IO) {
+        Files.deleteIfExists(progressFile(folder))
+        Unit
+    }
+
+    /** One file per source folder; the name is derived from the normalized folder path. */
+    private fun progressFile(folder: String): Path {
+        var key = Paths.get(folder).toAbsolutePath().normalize().toString()
+        if (isWindows) key = key.lowercase()
+        val hash = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        return progressDir.resolve("${hash.take(32)}.$PROGRESS_EXTENSION")
+    }
+
     companion object {
         val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp")
+
+        private const val PROGRESS_EXTENSION = "txt"
+
+        private val isWindows = "win" in System.getProperty("os.name").lowercase()
+
+        /** Windows: `%APPDATA%\PictureSorter\progress`, otherwise `$XDG_DATA_HOME/PictureSorter/progress`. */
+        fun defaultProgressDir(): Path {
+            val home = System.getProperty("user.home")
+            val base = if (isWindows) {
+                System.getenv("APPDATA") ?: Paths.get(home, "AppData", "Roaming").toString()
+            } else {
+                System.getenv("XDG_DATA_HOME")?.takeIf { it.isNotBlank() }
+                    ?: Paths.get(home, ".local", "share").toString()
+            }
+            return Paths.get(base, "PictureSorter", "progress")
+        }
 
         private var lookAndFeelSet = false
 

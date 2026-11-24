@@ -16,6 +16,17 @@ A "Tinder for pictures" for sorting photos (desktop: Windows and Ubuntu).
 
 "No" pictures stay untouched in the source folder.
 
+### Continue later
+
+Progress is saved automatically after every rating, so large folders can be sorted over several
+sittings. Click the logo (or just close the app) and the start screen lists all unfinished sessions
+with **Continue** and **Discard**; choosing a folder that has saved progress asks whether to continue
+or start over. When continuing, pictures deleted in the meantime are skipped, and pictures added to
+the folder are appended to round 1. Progress is removed once pictures have been moved.
+
+Progress files are stored outside the picture folder, one per source folder:
+`%APPDATA%\PictureSorter\progress` (Windows) or `~/.local/share/PictureSorter/progress` (Ubuntu).
+
 ## Run / build
 
 ```shell
@@ -27,8 +38,8 @@ A "Tinder for pictures" for sorting photos (desktop: Windows and Ubuntu).
 
 ## Structure
 
-- `shared/src/commonMain` – platform-independent logic (`model/SortSession.kt`), `SorterViewModel` and UI (`ui/`).
-- `shared/src/commonMain/.../PhotoPlatform.kt` – interface for file access (choosing folders, loading pictures, moving, opening folders).
+- `shared/src/commonMain` – platform-independent logic (`model/SortSession.kt`, `model/SavedProgress.kt`), `SorterViewModel` and UI (`ui/`).
+- `shared/src/commonMain/.../PhotoPlatform.kt` – interface for file access (choosing folders, loading pictures, moving, opening folders, storing progress).
 - `shared/src/jvmMain/.../JvmPhotoPlatform.kt` – desktop implementation.
 - `desktopApp` – desktop entry point.
 

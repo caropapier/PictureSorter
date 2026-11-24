@@ -48,6 +48,7 @@ import ruebe.picturesorter.model.SortSession
 fun RatingScreen(
     session: SortSession,
     images: Map<String, ImageState>,
+    message: String?,
     onRate: (Rating) -> Unit,
     onUndo: () -> Unit,
     onHome: () -> Unit,
@@ -109,6 +110,7 @@ fun RatingScreen(
             modifier = Modifier.fillMaxWidth(),
             color = ProgressBlue,
         )
+        message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
 
         // Picture styled like a printed photo: white border and soft shadow, sized to its aspect ratio
         Box(

@@ -18,7 +18,8 @@ class JvmPhotoPlatformTest {
     private val root: Path = Files.createTempDirectory("picturesorter-test")
     private val source = root.resolve("source").createDirectories()
     private val target = root.resolve("target")
-    private val platform = JvmPhotoPlatform()
+    private val progressDir = root.resolve("progress")
+    private val platform = JvmPhotoPlatform(progressDir = progressDir)
 
     @AfterTest
     fun cleanup() {
@@ -123,5 +124,22 @@ class JvmPhotoPlatformTest {
     fun sameFolderDetection() {
         assertTrue(platform.isSameFolder(source.toString(), source.resolve(".").toString()))
         assertFalse(platform.isSameFolder(source.toString(), target.toString()))
+    }
+
+    @Test
+    fun progressFilesAreWrittenReplacedAndDeleted() = runBlocking {
+        assertEquals(emptyList(), platform.readProgressFiles())
+
+        platform.writeProgressFile(source.toString(), "first")
+        platform.writeProgressFile(target.toString(), "other")
+        // Same folder, written differently: replaces the first file instead of adding one
+        platform.writeProgressFile(source.resolve(".").toString(), "second")
+
+        assertEquals(setOf("second", "other"), platform.readProgressFiles().toSet())
+        assertTrue(Files.list(progressDir).use { s -> s.noneMatch { it.toString().endsWith(".tmp") } })
+
+        platform.deleteProgressFile(source.toString())
+        assertEquals(listOf("other"), platform.readProgressFiles())
+        platform.deleteProgressFile(source.toString()) // no error if already gone
     }
 }

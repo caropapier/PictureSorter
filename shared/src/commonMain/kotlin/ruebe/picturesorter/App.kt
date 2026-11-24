@@ -34,12 +34,16 @@ fun App(platform: PhotoPlatform) {
                     Screen.START -> StartScreen(
                         busy = vm.busy,
                         message = vm.message,
+                        savedSessions = vm.savedSessions,
                         onChooseFolder = vm::chooseFolder,
+                        onResume = vm::resume,
+                        onDiscard = vm::requestDiscard,
                     )
                     Screen.RATING -> vm.session?.let { session ->
                         RatingScreen(
                             session = session,
                             images = vm.images,
+                            message = vm.message,
                             onRate = vm::rate,
                             onUndo = vm::undo,
                             onHome = vm::requestHome,
@@ -82,13 +86,33 @@ fun App(platform: PhotoPlatform) {
                 }
             }
 
-            if (vm.confirmAbort) {
+            vm.resumeOffer?.let { saved ->
                 AlertDialog(
-                    onDismissRequest = vm::cancelHome,
-                    title = { Text("Cancel sorting?") },
-                    text = { Text("All ratings will be lost. No pictures have been moved.") },
-                    confirmButton = { TextButton(onClick = vm::confirmHome) { Text("Cancel sorting") } },
-                    dismissButton = { TextButton(onClick = vm::cancelHome) { Text("Keep sorting") } },
+                    onDismissRequest = vm::cancelResume,
+                    title = { Text("Continue where you left off?") },
+                    text = {
+                        Text(
+                            "This folder has an unfinished session: round ${saved.round}, " +
+                                "${saved.ratedCount} of ${saved.total} pictures rated.\n" +
+                                "Starting over discards these ratings.",
+                        )
+                    },
+                    confirmButton = { TextButton(onClick = { vm.resume(saved) }) { Text("Continue") } },
+                    dismissButton = { TextButton(onClick = vm::startOver) { Text("Start over") } },
+                )
+            }
+
+            vm.discardRequest?.let { saved ->
+                AlertDialog(
+                    onDismissRequest = vm::cancelDiscard,
+                    title = { Text("Discard progress?") },
+                    text = {
+                        Text(
+                            "The ratings for\n${saved.folder}\nwill be lost. No pictures are moved or deleted.",
+                        )
+                    },
+                    confirmButton = { TextButton(onClick = vm::confirmDiscard) { Text("Discard") } },
+                    dismissButton = { TextButton(onClick = vm::cancelDiscard) { Text("Keep") } },
                 )
             }
 

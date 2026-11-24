@@ -28,6 +28,15 @@ interface PhotoPlatform {
 
     /** `true` if both paths denote the same folder. */
     fun isSameFolder(a: String, b: String): Boolean
+
+    /** Contents of all stored progress files, most recently written first. */
+    suspend fun readProgressFiles(): List<String>
+
+    /** Stores the progress for [folder], replacing an earlier one. The write must be atomic. */
+    suspend fun writeProgressFile(folder: String, content: String)
+
+    /** Deletes the stored progress for [folder] (no error if there is none). */
+    suspend fun deleteProgressFile(folder: String)
 }
 
 data class MoveFailure(val photo: Photo, val reason: String)
