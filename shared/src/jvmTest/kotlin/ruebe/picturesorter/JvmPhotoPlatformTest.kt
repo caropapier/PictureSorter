@@ -142,4 +142,19 @@ class JvmPhotoPlatformTest {
         assertEquals(listOf("other"), platform.readProgressFiles())
         platform.deleteProgressFile(source.toString()) // no error if already gone
     }
+
+    @Test
+    fun readsLocalizedPicturesFolderOnLinux() {
+        val config = root.resolve("user-dirs.dirs")
+        config.writeText("# comment\nXDG_DESKTOP_DIR=\"\$HOME/Schreibtisch\"\nXDG_PICTURES_DIR=\"\$HOME/Bilder\"\n")
+        assertEquals("/home/me/Bilder", JvmPhotoPlatform.xdgUserDir("XDG_PICTURES_DIR", "/home/me", config))
+        assertEquals(null, JvmPhotoPlatform.xdgUserDir("XDG_MUSIC_DIR", "/home/me", config))
+    }
+
+    @Test
+    fun findsPicturesFolderOnThisMachine() {
+        // Every desktop user account has one; at least it must be an existing folder if found
+        JvmPhotoPlatform.picturesFolder?.let { assertTrue(java.io.File(it).isDirectory) }
+        println("Pictures folder: ${JvmPhotoPlatform.picturesFolder}")
+    }
 }

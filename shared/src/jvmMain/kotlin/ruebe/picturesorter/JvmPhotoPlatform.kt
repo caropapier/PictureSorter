@@ -48,7 +48,8 @@ class JvmPhotoPlatform(
             dialogTitle = title
             fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
             isAcceptAllFileFilterUsed = false
-            suggestion?.let { File(it) }?.let { file ->
+            // Without a suggestion, start in the user's pictures folder instead of "Documents"
+            (suggestion ?: picturesFolder)?.let { File(it) }?.let { file ->
                 if (file.isDirectory) {
                     currentDirectory = file
                 } else {
@@ -149,6 +150,44 @@ class JvmPhotoPlatform(
         private const val PROGRESS_EXTENSION = "txt"
 
         private val isWindows = "win" in System.getProperty("os.name").lowercase()
+
+        /** The user's pictures folder, or `null` if it cannot be found. Determined once. */
+        val picturesFolder: String? by lazy { findPicturesFolder() }
+
+        private fun findPicturesFolder(): String? {
+            val home = System.getProperty("user.home")
+            val candidates = if (isWindows) {
+                // The registry knows the real location, also when it was moved (e.g. to OneDrive)
+                listOfNotNull(windowsShellFolder("My Pictures"), Paths.get(home, "Pictures").toString())
+            } else {
+                // Localized on Linux, e.g. ~/Bilder on a German Ubuntu
+                listOfNotNull(xdgUserDir("XDG_PICTURES_DIR", home), Paths.get(home, "Pictures").toString())
+            }
+            return candidates.firstOrNull { File(it).isDirectory }
+        }
+
+        private fun windowsShellFolder(name: String): String? = runCatching {
+            val process = ProcessBuilder(
+                "reg", "query",
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+                "/v", name,
+            ).redirectErrorStream(true).start()
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+            // Line format: "    My Pictures    REG_SZ    C:\Users\me\Pictures"
+            output.lines().firstOrNull { "REG_SZ" in it }?.substringAfter("REG_SZ")?.trim()?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+
+        /** Reads a folder from `~/.config/user-dirs.dirs`, e.g. `XDG_PICTURES_DIR="$HOME/Bilder"`. */
+        internal fun xdgUserDir(key: String, home: String, config: Path = Paths.get(home, ".config", "user-dirs.dirs")): String? =
+            runCatching {
+                config.toFile().readLines()
+                    .map { it.trim() }
+                    .firstOrNull { it.startsWith("$key=") }
+                    ?.substringAfter('=')?.trim()?.removeSurrounding("\"")
+                    ?.replace("\$HOME", home)
+                    ?.takeIf { it.isNotEmpty() }
+            }.getOrNull()
 
         /** Windows: `%APPDATA%\PictureSorter\progress`, otherwise `$XDG_DATA_HOME/PictureSorter/progress`. */
         fun defaultProgressDir(): Path {
